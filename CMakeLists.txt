@@ -22,6 +22,11 @@ if (CRON_COMPILE_AS_CXX)
     target_compile_definitions(ccronexpr PUBLIC CRON_COMPILE_AS_CXX=1)
 endif ()
 
+option(CRON_CUSTOM_TIME_FUNCTIONS "Allow setting custom time functions")
+if (CRON_CUSTOM_TIME_FUNCTIONS)
+    target_compile_definitions(ccronexpr PUBLIC CRON_CUSTOM_TIME_FUNCTIONS=1)
+endif()
+
 if (MSVC)
     # Strict compilation
     target_compile_options(ccronexpr PRIVATE /W4 /WX)

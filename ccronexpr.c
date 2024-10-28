@@ -60,12 +60,6 @@ static const char* const DAYS_ARR[] = { "SUN", "MON", "TUE", "WED", "THU", "FRI"
 static const char* const MONTHS_ARR[] = { "FOO", "JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC" };
 #define CRON_MONTHS_ARR_LEN 13
 
-/**
- * Time functions from standard library.
- * This part defines: cron_mktime: create time_t from tm
- *                    cron_time:   create tm from time_t
- */
-
 /* forward declarations for platforms that may need them */
 /* can be hidden in time.h */
 #if !defined(_WIN32) && !defined(__AVR__) && !defined(ESP8266) && !defined(ESP_PLATFORM) && !defined(ANDROID) && !defined(TARGET_LIKE_MBED)
@@ -80,7 +74,7 @@ time_t _mkgmtime(struct tm* tm);
 
 /* Defining 'cron_' time functions to use use UTC (default) or local time */
 #ifndef CRON_USE_LOCAL_TIME
-time_t cron_mktime(struct tm* tm) {
+time_t default_cron_mktime(void *ctx, struct tm* tm) {
 #if defined(_WIN32)
 /* http://stackoverflow.com/a/22557778 */
     return _mkgmtime(tm);
@@ -100,7 +94,7 @@ time_t cron_mktime(struct tm* tm) {
     return timegm(tm);
 #endif
 }
-struct tm* cron_time(time_t* date, struct tm* out) {
+struct tm* default_cron_time(void *ctx, const time_t* date, struct tm* out) {
 #if defined(__MINGW32__)
     (void)(out); /* To avoid unused warning */
     return gmtime(date);
@@ -132,6 +126,42 @@ struct tm* cron_time(time_t* date, struct tm* out) {
 #endif
 }
 #endif /* CRON_USE_LOCAL_TIME */
+
+/**
+ * Time functions from standard library.
+ * This part defines: cron_mktime: create time_t from tm
+ *                    cron_time:   create tm from time_t
+ */
+
+#ifdef CRON_CUSTOM_TIME_FUNCTIONS
+
+static __thread cron_time_funcs g_time_funcs = { default_cron_mktime, default_cron_time, NULL };
+
+time_t cron_mktime(struct tm* tm) {
+    return g_time_funcs.to_time(g_time_funcs.context, tm);
+}
+
+struct tm* cron_time(time_t* date, struct tm* out) {
+    return g_time_funcs.from_time(g_time_funcs.context, date, out);
+}
+
+void cron_set_time_funcs(cron_time_funcs funcs) {
+    g_time_funcs = funcs;
+    if (!g_time_funcs.to_time) g_time_funcs.to_time = default_cron_mktime;
+    if (!g_time_funcs.from_time) g_time_funcs.from_time = default_cron_time;
+}
+
+#else
+
+inline time_t cron_mktime(struct tm* tm) {
+    return default_cron_mktime(NULL, tm);
+}
+inline struct tm* cron_time(time_t* date, struct tm* out) {
+    return default_cron_time(NULL, date, out);
+}
+
+#endif /* CRON_CUSTOM_TIME_FUNCTIONS */
+
 
 #define reset_all_min(calendar, fields) reset_all(reset_min, calendar, fields);
 #define reset_all_max(calendar, fields) reset_all(reset_max, calendar, fields);
