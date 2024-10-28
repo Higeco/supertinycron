@@ -116,6 +116,29 @@ time_t cron_prev(cron_expr* expr, time_t date);
  */
 int cron_generate_expr(cron_expr *source, char *buffer, int buffer_len, int expr_len, const char **error);
 
+#ifdef CRON_CUSTOM_TIME_FUNCTIONS
+
+typedef struct
+{
+    /** Convert from calendar time to epoch time. See the standard C library mktime() for information. */
+    time_t (*to_epoch)(void*, struct tm*);
+
+    /** Convert from epoch time to calendar time. See the standard C library localtime() for information. */
+    struct tm *(*from_epoch)(void*, const time_t*, struct tm*);
+
+    /** User provided context that will be passed to the functions. */
+    void* context;
+} cron_time_funcs;
+
+/**
+ * Set the functions that will be used to convert between calendar and epoch time.
+ *
+ * @param funcs the functions to use. Setting a NULL function will fallback to the default one.
+ */
+void cron_set_time_funcs(cron_time_funcs funcs);
+
+#endif /* CRON_CUSTOM_TIME_FUNCTIONS */
+
 #if defined(__cplusplus) && !defined(CRON_COMPILE_AS_CXX)
 } /* extern "C"*/
 #endif
